@@ -1,0 +1,168 @@
+<html>
+<head>
+
+<!-- An empty script tag used to execute the return from the server -->
+<script type="text/javascript" id="jsonpResults"></script>
+
+<!-- Use JSONP to get data from a server not on the same domain -->
+<script type="text/javascript">
+
+function get_status()
+{
+	// Create a new <script> element
+	script = document.createElement("script");
+
+	// Set it's attribute to the same as the dummy script tag above
+	script.setAttribute("id", "jsonpResults");
+
+	// Set the source to the remote call, which returns the data
+	script.src = "http://localhost:5000/?callback=jsonp_callback";
+
+	// Get the dummy script tag
+	jsonp = document.getElementById("jsonpResults");
+
+	// Replace the script tag inline with the new one, which gets executed
+	jsonp.parentNode.replaceChild(script, jsonpResults);
+}
+
+function start()
+{
+	window.setInterval(get_status, 1000);
+}
+
+// A mapping of all the algorithms I care about
+algorithmMap = {"algorithms.py:52":"Algorithm 1",
+				"algorithms.py:64":"Algorithm 2",
+				"algorithms.py:131":"Algorithm 3",
+				"algorithms.py:203":"Algorithm 4"};
+
+function add_jobs_to_row(row, jobs)
+{
+	// Pull out the job lists.
+	activeJobs = jobs.active;
+	completedJobs = jobs.completed;
+	failedJobs = jobs.failed;
+
+	// Figure out the status of each key from each of the different
+	// job lists.
+	algorithmKeys = Object.keys(algorithmMap);
+	for (var i=0; i<algorithmKeys.length; i++)
+	{
+		// Get the algorithm's key
+		algorithmKey = algorithmKeys[i];
+
+		// Get the cell to modify
+		cell = row.cells[i+2];
+
+		// See if the algorithm is active
+		for (var j=0; j<activeJobs.length; j++)
+		{
+			activeJobName = activeJobs[j][0];
+			if (algorithmKey == activeJobName)
+			{
+				cell.innerHTML = "Active";
+				cell.style.backgroundColor = "#eedd11";
+			}
+		}
+
+		// See if the algorithm has failed
+		for (var j=0; j<failedJobs.length; j++)
+		{
+			failedJobName = failedJobs[j][0];
+			failedJobTime = failedJobs[j][1];
+			if (algorithmKey == failedJobName)
+			{
+				cell.innerHTML = "Failed (" + failedJobTime + ")";
+				cell.style.backgroundColor = "#dd1111";
+			}
+		}
+
+		// See if the algorithm has completed
+		for (var j=0; j<completedJobs.length; j++)
+		{
+			completedJobName = completedJobs[j][0];
+			completedJobTime = completedJobs[j][1];
+			if (algorithmKey == completedJobName)
+			{
+				cell.innerHTML = "Finished (" + completedJobTime + ")";
+				cell.style.backgroundColor = "#11dd11";
+			}
+		}
+
+	}
+}
+
+// Called when the jsonp script is loaded
+function jsonp_callback(data)
+{
+	// "data" is a javascript dictionary object. Parse it.
+	dataObj = JSON.parse(data);
+
+	// Parse the dataObject and create a nice view of it
+	dataTable = document.getElementById("dataTable");
+
+	// First, clear the table
+	dataTable.innerHTML = "";
+	dataTable.cellPadding = 3;
+
+	// Create the table's headers
+	headers = dataTable.insertRow();
+
+	// The column names
+	columns = ["Job Name", "User"];
+
+	// Get the names of the algorithms in the map
+	algorithmKeys = Object.keys(algorithmMap);
+
+	// Add each of the values to the columns
+	for (var i=0; i<algorithmKeys.length; i++)
+		columns = columns.concat([algorithmMap[algorithmKeys[i]]]);
+
+	// Create a cell for each column header
+	for (var i=0; i<columns.length; i++)
+	{
+		cell = headers.insertCell(-1);
+		cell.innerHTML = columns[i];
+		cell.width = 100 / columns.length + "%";
+		cell.align = "center";
+		cell.style.fontWeight = "bold";
+		cell.style.backgroundColor = "#CCCCCC";
+	}
+
+	// Create a row for each application (running image)
+	for (var i=0; i<dataObj.length; i++)
+	{
+		app = dataObj[i];
+
+		// Create a new row in the table
+		row = dataTable.insertRow(-1);
+		if (i%2 == 1)
+			row.style.backgroundColor = "#eeeeee";
+
+		// Create a cell for each column
+		for (var j=0; j<columns.length; j++)
+		{
+			cell = row.insertCell(-1);
+			cell.align = "center";
+
+			// Add the name to the cell
+			if (j==0)
+				cell.innerHTML = app.name;
+
+			// Add the user to the cell
+			else if (j==1)
+				cell.innerHTML = app.user;
+		}
+
+		// Add the jobs to the row
+		add_jobs_to_row(row, app.jobs);
+	}
+}
+
+</script>
+</head>
+
+<body onload="start();">
+	<div id="parsedData"></div>
+	<table id="dataTable" width="100%" style="font:9pt sans;">
+</body>
